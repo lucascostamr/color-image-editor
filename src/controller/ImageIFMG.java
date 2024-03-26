@@ -155,8 +155,10 @@ public class ImageIFMG extends JFrame {
         int maior = Math.max(vermelho, Math.max(verde, azul));
         int menor = Math.min(vermelho, Math.min(verde, azul));
         int diff = maior - menor;
+
         valor[l][c] = maior;
         saturacao[l][c] = maior > 0 ? (maior - menor)/maior : 0;
+        
         if(maior == vermelho) {
           hue[l][c] = diff > 0 ? 60*(verde - azul)/(maior - menor) : 0;
         } else if (maior == verde) {
@@ -169,6 +171,87 @@ public class ImageIFMG extends JFrame {
 
     }
     geraImagem(hue, saturacao, valor);
+  }
+
+  public void hsvToRgb() {
+    int[][] matrizVermelha = obterMatrizVermelha();
+    int[][] matrizVerde = obterMatrizVerde();
+    int[][] matrizAzul = obterMatrizAzul();
+    int[][] valor = new int[matrizVermelha.length][matrizVermelha[0].length];
+    int[][] saturacao = new int[matrizVermelha.length][matrizVermelha[0].length];
+    int[][] hue = new int[matrizVermelha.length][matrizVermelha[0].length];
+    int c, x, m;
+
+    for (int l = 0; l < matrizVermelha.length; l++) {
+      for (int co = 0; co < matrizVermelha[0].length; co++) {
+        int vermelho = matrizVermelha[l][co];
+        int verde = matrizVerde[l][co];
+        int azul = matrizAzul[l][co];
+        int valorNum, saturacaoNum, hueNum;
+        int maior = Math.max(vermelho, Math.max(verde, azul));
+        int menor = Math.min(vermelho, Math.min(verde, azul));
+        int diff = maior - menor;
+        valor[l][co] = maior;
+        saturacao[l][co] = maior > 0 ? (maior - menor)/maior : 0;
+        if(maior == vermelho) {
+          hue[l][co] = diff > 0 ? 60*(verde - azul)/(maior - menor) : 0;
+        } else if (maior == verde) {
+          hue[l][co] = diff > 0 ? 60*(2 + azul - vermelho)/(maior - menor) : 0;
+        } else {
+          hue[l][co] = diff > 0 ? 60*(4 + vermelho - verde)/(maior - menor) : 0;
+        }
+        if(hue[l][co] < 0) hue[l][co] += 360;
+        
+        valorNum = valor[l][co];
+        saturacaoNum = saturacao[l][co];
+        hueNum = hue[l][co];
+
+        c = valorNum * saturacaoNum;
+        m = valorNum - c;
+        x = c*(1 - (Math.abs(((hueNum/60)%2)-1)));
+
+        if(hueNum <= 60) {
+          matrizVermelha[l][co] = c + m;
+          matrizVerde[l][co] = x + m;
+          matrizAzul[l][co] = m;
+        }
+        else if (hueNum <= 120) {
+          matrizVermelha[l][co] = x + m;
+          matrizVerde[l][co] = c + m;
+          matrizAzul[l][co] = m;
+        }
+        else if (hueNum <= 180) {
+          matrizVermelha[l][co] = m;
+          matrizVerde[l][co] = c + m;
+          matrizAzul[l][co] = x + m;
+        }
+        else if (hueNum <= 240) {
+          matrizVermelha[l][co] = m;
+          matrizVerde[l][co] = x + m;
+          matrizAzul[l][co] = c + m;
+        }
+        else if (hueNum <= 300) {
+          matrizVermelha[l][co] = x + m;
+          matrizVerde[l][co] = m;
+          matrizAzul[l][co] = c + m;
+        }
+        else if (hueNum <= 360) {
+          matrizVermelha[l][co] = c + m;
+          matrizVerde[l][co] = m;
+          matrizAzul[l][co] = x + m;
+        }
+        else {
+          matrizVermelha[l][co] = m;
+          matrizVerde[l][co] = m;
+          matrizAzul[l][co] = m;
+        }
+
+        matrizVermelha[l][co] *= 255;
+        matrizVerde[l][co] *= 255;
+        matrizAzul[l][co] *= 255;
+      }
+    }
+    geraImagem(matrizVermelha, matrizVerde, matrizAzul);
   }
 
   public ImageIFMG() {
@@ -190,6 +273,7 @@ public class ImageIFMG extends JFrame {
     JMenuItem item5 = new JMenuItem("Cinza escuro");
     JMenuItem item6 = new JMenuItem("Cinza claro");
     JMenuItem item7 = new JMenuItem("To HSV");
+    JMenuItem item8 = new JMenuItem("HSV to RGB");
 
     addMenu2.add(item1);
     addMenu2.add(item2);
@@ -198,6 +282,7 @@ public class ImageIFMG extends JFrame {
     addMenu2.add(item5);
     addMenu2.add(item6);
     addMenu2.add(item7);
+    addMenu2.add(item8);
 
     bar.add(addMenu2);
 
@@ -381,6 +466,23 @@ public class ImageIFMG extends JFrame {
 
     );
 
+    item8.addActionListener(
+        new ActionListener() {
+
+          @Override
+          public void actionPerformed(ActionEvent e) {
+            Vector<int[][]> rgbMat = getMatrixRGB();
+            matR = rgbMat.elementAt(0);
+
+            matG = rgbMat.elementAt(1);
+            matB = rgbMat.elementAt(2);
+
+            hsvToRgb();
+          }
+        }
+
+    );
+
     setSize(600, 400);
     setVisible(true);
 
@@ -395,25 +497,15 @@ public class ImageIFMG extends JFrame {
     try {
       img = ImageIO.read(new File(path));
 
-      int[][] pixelData = new int[img.getHeight() * img.getWidth()][3];
       rmat = new int[img.getHeight()][img.getWidth()];
       gmat = new int[img.getHeight()][img.getWidth()];
       bmat = new int[img.getHeight()][img.getWidth()];
 
-      int counter = 0;
       for (int i = 0; i < img.getHeight(); i++) {
         for (int j = 0; j < img.getWidth(); j++) {
           rmat[i][j] = getPixelData(img, j, i)[0];
           gmat[i][j] = getPixelData(img, j, i)[1];
           bmat[i][j] = getPixelData(img, j, i)[2];
-
-          /*
-           * for(int k = 0; k < rgb.length; k++){
-           * pixelData[counter][k] = rgb[k];
-           * }
-           */
-
-          counter++;
         }
       }
 
